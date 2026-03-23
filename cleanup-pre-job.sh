@@ -42,8 +42,11 @@ echo "[cleanup-pre-job] File cleanup complete."
 # Prune all unused Docker data (images, containers, volumes, networks)
 echo "[cleanup-pre-job] Pruning Docker system..."
 if command -v docker &> /dev/null; then
-    docker system prune -a --volumes --force
-    echo "[cleanup-pre-job] Docker prune complete."
+    if docker system prune -a --volumes --force; then
+        echo "[cleanup-pre-job] Docker prune complete."
+    else
+        echo "[cleanup-pre-job] Docker prune failed (exit code $?), continuing anyway."
+    fi
 else
     echo "[cleanup-pre-job] Docker not found, skipping prune."
 fi

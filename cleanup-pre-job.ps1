@@ -34,8 +34,13 @@ try {
     # Prune all unused Docker data (images, containers, volumes, networks)
     Write-Output "[cleanup-pre-job] Pruning Docker system..."
     if (Get-Command docker -ErrorAction SilentlyContinue) {
-        docker system prune -a --volumes --force
-        Write-Output "[cleanup-pre-job] Docker prune complete."
+        docker system prune -a --volumes --force 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Output "[cleanup-pre-job] Docker prune complete."
+        }
+        else {
+            Write-Output "[cleanup-pre-job] Docker prune failed (exit code $LASTEXITCODE), continuing anyway."
+        }
     }
     else {
         Write-Output "[cleanup-pre-job] Docker not found, skipping prune."
