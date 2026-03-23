@@ -29,6 +29,18 @@ try {
         Remove-Item -Path $item.FullName -Recurse -Force -ErrorAction Stop
     }
 
+    Write-Output "[cleanup-pre-job] File cleanup complete."
+
+    # Prune all unused Docker data (images, containers, volumes, networks)
+    Write-Output "[cleanup-pre-job] Pruning Docker system..."
+    if (Get-Command docker -ErrorAction SilentlyContinue) {
+        docker system prune -a --volumes --force
+        Write-Output "[cleanup-pre-job] Docker prune complete."
+    }
+    else {
+        Write-Output "[cleanup-pre-job] Docker not found, skipping prune."
+    }
+
     Write-Output "[cleanup-pre-job] Cleanup complete."
     exit 0
 }
