@@ -4,7 +4,11 @@
 # while preserving the _tool cache.
 #
 # Usage: Configure ACTIONS_RUNNER_HOOK_JOB_STARTED in the runner's .env file
-# See: https://docs.github.com/en/enterprise-server@3.19/actions/how-tos/manage-runners/self-hosted-runners/run-scripts
+# See: https://docs.github.com/en/enterprise-server@3.20/actions/how-tos/manage-runners/self-hosted-runners/run-scripts
+#
+# NOTE: The runner executes bash scripts with -e (errexit). Any command that
+#       fails will abort the script and mark the job as failed. Guard fallible
+#       commands with "|| true" to allow the job to continue.
 
 WORK_DIR="/actions-runner/_work"
 PRESERVE_DIR="_tool"
@@ -27,25 +31,27 @@ for item in "$WORK_DIR"/*; do
         continue
     fi
     echo "[cleanup-pre-job] Removing: $item"
-    rm -rf "$item"
+    rm -rf "$item" || true
 done
 
 # Also clean hidden files/directories (e.g. .dotfiles)
 for item in "$WORK_DIR"/.[!.]*; do
     [ -e "$item" ] || continue
     echo "[cleanup-pre-job] Removing hidden item: $item"
-    rm -rf "$item"
+    rm -rf "$item" || true
 done
 
 echo "[cleanup-pre-job] File cleanup complete."
 
 # Prune all unused Docker data (images, containers, volumes, networks)
-echo "[cleanup-pre-job] Pruning Docker system..."
+# Wrap with timeout to prevent blocking job execution indefinitely.
+DOCKER_TIMEOUT=300
+echo "[cleanup-pre-job] Pruning Docker system (timeout: ${DOCKER_TIMEOUT}s)..."
 if command -v docker &> /dev/null; then
-    if docker system prune -a --volumes --force; then
+    if timeout "$DOCKER_TIMEOUT" docker system prune -a --volumes --force; then
         echo "[cleanup-pre-job] Docker prune complete."
     else
-        echo "[cleanup-pre-job] Docker prune failed (exit code $?), continuing anyway."
+        echo "[cleanup-pre-job] Docker prune failed or timed out (exit code $?), continuing anyway."
     fi
 else
     echo "[cleanup-pre-job] Docker not found, skipping prune."

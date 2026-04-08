@@ -9,7 +9,7 @@ Pre-job scripts that automatically clean the `_work` directory on GitHub Enterpr
 
 ## How It Works
 
-These scripts hook into the [`ACTIONS_RUNNER_HOOK_JOB_STARTED`](https://docs.github.com/en/enterprise-server@3.19/actions/how-tos/manage-runners/self-hosted-runners/run-scripts) mechanism. When configured, the runner automatically executes the script before each job starts. The scripts:
+These scripts hook into the [`ACTIONS_RUNNER_HOOK_JOB_STARTED`](https://docs.github.com/en/enterprise-server@3.20/actions/how-tos/manage-runners/self-hosted-runners/run-scripts) mechanism. When configured, the runner automatically executes the script before each job starts. The scripts:
 
 1. Check if the `_work` directory exists
 2. Remove all contents **except** the `_tool` cache directory
@@ -84,9 +84,9 @@ After deploying, trigger a workflow run and check the job logs. The cleanup outp
 | **Permission denied** | Ensure the script is executable (`chmod +x` on Linux). Verify the runner service account has access to the script and the `_work` directory. |
 | **Job fails immediately** | Check the "Set up runner" step logs. A non-zero exit code from the pre-job script causes the job to fail. |
 | **Script not running** | Verify the `.env` file path is correct and uses an absolute path. Restart the runner service after changes. |
-| **No timeout setting** | There is no built-in timeout for hook scripts. Consider adding timeout handling if cleanup could take a long time. |
+| **Docker prune hangs** | Docker prune is wrapped in a 300-second timeout. Adjust `DOCKER_TIMEOUT` / `$DockerTimeout` if needed. |
 
 ## References
 
-- [Running scripts before or after a job — GitHub Docs (GHES 3.19)](https://docs.github.com/en/enterprise-server@3.19/actions/how-tos/manage-runners/self-hosted-runners/run-scripts)
-- [Variables reference — Default environment variables](https://docs.github.com/en/enterprise-server@3.19/actions/reference/variables-reference#default-environment-variables)
+- [Running scripts before or after a job — GitHub Docs (GHES 3.20)](https://docs.github.com/en/enterprise-server@3.20/actions/how-tos/manage-runners/self-hosted-runners/run-scripts)
+- [Variables reference — Default environment variables](https://docs.github.com/en/enterprise-server@3.20/actions/reference/variables-reference#default-environment-variables)

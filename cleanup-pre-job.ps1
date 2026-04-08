@@ -3,7 +3,7 @@
 # while preserving the _tool cache.
 #
 # Usage: Configure ACTIONS_RUNNER_HOOK_JOB_STARTED in the runner's .env file
-# See: https://docs.github.com/en/enterprise-server@3.19/actions/how-tos/manage-runners/self-hosted-runners/run-scripts
+# See: https://docs.github.com/en/enterprise-server@3.20/actions/how-tos/manage-runners/self-hosted-runners/run-scripts
 
 $WorkDir = "C:\actions-runner\_work"
 $PreserveDir = "_tool"
@@ -32,15 +32,26 @@ try {
     Write-Output "[cleanup-pre-job] File cleanup complete."
 
     # Prune all unused Docker data (images, containers, volumes, networks)
-    Write-Output "[cleanup-pre-job] Pruning Docker system..."
+    # Wrap with a timeout to prevent blocking job execution indefinitely.
+    $DockerTimeout = 300
+    Write-Output "[cleanup-pre-job] Pruning Docker system (timeout: ${DockerTimeout}s)..."
     if (Get-Command docker -ErrorAction SilentlyContinue) {
-        docker system prune -a --volumes --force 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Write-Output "[cleanup-pre-job] Docker prune complete."
+        $dockerJob = Start-Job -ScriptBlock { docker system prune -a --volumes --force 2>&1 }
+        $completed = $dockerJob | Wait-Job -Timeout $DockerTimeout
+        if ($completed) {
+            Receive-Job -Job $dockerJob
+            if ($dockerJob.State -eq 'Completed') {
+                Write-Output "[cleanup-pre-job] Docker prune complete."
+            }
+            else {
+                Write-Output "[cleanup-pre-job] Docker prune failed, continuing anyway."
+            }
         }
         else {
-            Write-Output "[cleanup-pre-job] Docker prune failed (exit code $LASTEXITCODE), continuing anyway."
+            Stop-Job -Job $dockerJob
+            Write-Output "[cleanup-pre-job] Docker prune timed out after ${DockerTimeout}s, continuing anyway."
         }
+        Remove-Job -Job $dockerJob -Force
     }
     else {
         Write-Output "[cleanup-pre-job] Docker not found, skipping prune."
